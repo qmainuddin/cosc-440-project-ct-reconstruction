@@ -1,0 +1,10 @@
+data/
+runs/
+.venv*/
+__pycache__/
+*.pyc
+.DS_Store
+*.log
+*.pickle
+*.pkl
+requirements-installed-local.txt
