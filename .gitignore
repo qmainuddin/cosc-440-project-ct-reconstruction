@@ -1,10 +1,61 @@
+# Course datasets (kept locally; never submitted through Git)
 data/
-runs/
-.venv*/
-__pycache__/
-*.pyc
-.DS_Store
-*.log
+datasets/
 *.pickle
 *.pkl
+
+# Experiment results, reconstructions and saved model state
+runs/
+outputs/
+checkpoints/
+logs/
+*.log
+*.tif
+*.tiff
+*.npy
+*.npz
+*.keras
+*.weights.h5
+*.ckpt
+*.ckpt.*
+events.out.tfevents.*
+.running
+
+# Local Python environments and installed-package snapshots
+.venv*/
+.venvs/
+venv/
+env/
 requirements-installed-local.txt
+requirements-cs23002lv.txt
+requirements-cs25049kx.txt
+cosc440-lab-packages.txt
+
+# Python, notebook and test caches
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Local credentials and environment settings
+.env
+.env.*
+!.env.example
+!.env.template
+.ssh/
+*.pem
+*.key
+
+# Editor and operating-system files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+._*
+Thumbs.db

@@ -32,7 +32,7 @@ Testable hypothesis: at matched dataset, epoch/ray budget and optimizer settings
 | `test_project.py` | 80 | 80 | 0 | New supporting file |
 | `gpu_python.py` | 26 | 26 | 0 | New supporting file |
 | `compare_runs.py` | 76 | 76 | 0 | New supporting file |
-| `.gitignore` | 10 | 10 | 0 | New supporting file |
+| `.gitignore` | 61 | 61 | 0 | New supporting file |
 | `requirements.txt` | 6 | 6 | 0 | New supporting file |
 | `requirements-linux.txt` | 2 | 2 | 0 | New supporting file |
 | `README.md` | 263 | 263 | 0 | New supporting file |
