@@ -5,42 +5,42 @@ datasets/
 *.pkl
 
 # Experiment results, reconstructions and saved model state
-runs/
-outputs/
-checkpoints/
-logs/
-*.log
-*.tif
-*.tiff
-*.npy
-*.npz
-*.keras
-*.weights.h5
-*.ckpt
-*.ckpt.*
-events.out.tfevents.*
-.running
+#runs/
+#outputs/
+#checkpoints/
+#logs/
+#*.log
+#*.tif
+#*.tiff
+#*.npy
+#*.npz
+#*.keras
+#*.weights.h5
+#*.ckpt
+#*.ckpt.*
+#events.out.tfevents.*
+#.running
 
 # Local Python environments and installed-package snapshots
 .venv*/
 .venvs/
 venv/
 env/
-requirements-installed-local.txt
-requirements-cs23002lv.txt
-requirements-cs25049kx.txt
-cosc440-lab-packages.txt
+#requirements-installed-local.txt
+#requirements-cs23002lv.txt
+#requirements-cs25049kx.txt
+#cosc440-lab-packages.txt
 
 # Python, notebook and test caches
 __pycache__/
 *.py[cod]
-.ipynb_checkpoints/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.coverage
-.coverage.*
-htmlcov/
+#.ipynb_checkpoints/
+#.pytest_cache/
+#.mypy_cache/
+#.ruff_cache/
+#.coverage
+#.coverage.*
+#htmlcov/
 
 # Local credentials and environment settings
 .env
