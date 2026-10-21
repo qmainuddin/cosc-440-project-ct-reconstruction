@@ -7,7 +7,7 @@ datasets/
 # Experiment results, reconstructions and saved model state
 #runs/
 #outputs/
-#checkpoints/
+checkpoints/
 #logs/
 #*.log
 #*.tif
