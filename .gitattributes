@@ -1,0 +1,3 @@
+# Preserve exact evidence bytes so checksums verify after checkout.
+submit/** -text whitespace=cr-at-eol
+*.zip binary
