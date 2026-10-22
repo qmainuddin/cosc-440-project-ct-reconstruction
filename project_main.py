@@ -345,7 +345,7 @@ def parse_args():
     parser.add_argument('--embedding-dim', type=int, default=1)
     parser.add_argument('--token-dim', type=int, default=8)
     parser.add_argument('--heads', type=int, default=2)
-    parser.add_argument('--learning-rate', type=float, default=0.1)
+    parser.add_argument('--learning-rate', type=float, default=0.001)
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--query-batch', type=int, default=8192)
     parser.add_argument('--save-every', type=int, default=10)
