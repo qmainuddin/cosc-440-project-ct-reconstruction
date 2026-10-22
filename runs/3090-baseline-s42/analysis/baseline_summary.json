@@ -1,0 +1,53 @@
+{
+  "validation": "PASS: contiguous finite epoch records; CSV matches log; source hashes match; saved raw/display volumes and image MSE agree",
+  "volume_shape": [
+    128,
+    128,
+    128
+  ],
+  "first_epoch": {
+    "epoch": 1.0,
+    "train_mse": 0.18105545396916567,
+    "train_nmse": 1.344914518855512,
+    "ssim": 0.23462286801077425,
+    "psnr_db": 15.868133760988712,
+    "display_mse": 0.0263580115837851,
+    "training_seconds": 4.177558604002115,
+    "evaluation_seconds": 11.6689208530006
+  },
+  "final_epoch": {
+    "epoch": 50.0,
+    "train_mse": 4.9594399897614493e-05,
+    "train_nmse": 0.0003969091176986694,
+    "ssim": 0.7129027950577438,
+    "psnr_db": 24.71528010815382,
+    "display_mse": 0.0037457299663304637,
+    "training_seconds": 1.7940158499986865,
+    "evaluation_seconds": 14.15054007001163
+  },
+  "best_ssim_epoch": {
+    "epoch": 50.0,
+    "train_mse": 4.9594399897614493e-05,
+    "train_nmse": 0.0003969091176986694,
+    "ssim": 0.7129027950577438,
+    "psnr_db": 24.71528010815382,
+    "display_mse": 0.0037457299663304637,
+    "training_seconds": 1.7940158499986865,
+    "evaluation_seconds": 14.15054007001163
+  },
+  "saved_epoch_display_mse": {
+    "10": 0.00495344886501126,
+    "20": 0.005664182418770444,
+    "30": 0.004364296386261162,
+    "40": 0.004284413310941574,
+    "50": 0.0037457299663304637
+  },
+  "total_recorded_training_seconds": 92.36435638400144,
+  "total_recorded_evaluation_seconds": 647.1072698280623,
+  "limitations": [
+    "One baseline seed; full attention run still required for comparison.",
+    "Training-fit metrics do not measure unseen-data generalization.",
+    "SSIM is averaged over 2D slices; images are independently scaled per volume.",
+    "Recorded timings exclude startup and some file/checkpoint writing."
+  ]
+}
