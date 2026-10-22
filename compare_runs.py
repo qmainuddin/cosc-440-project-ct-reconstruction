@@ -19,7 +19,7 @@ def load_run(folder):
     return config, rows
 
 
-def compare(first, second, output):
+def compare(first, second, output, epoch=None):
     a, rows_a = load_run(first)
     b, rows_b = load_run(second)
     # Reject misleading comparisons of different datasets or sampling budgets.
@@ -29,15 +29,20 @@ def compare(first, second, output):
             raise ValueError(f'Unmatched experiment setting: {key}')
     if a['model'] != 'baseline' or b['model'] != 'attention':
         raise ValueError('Supply baseline first, attention second')
-    epoch = int(rows_a[-1]['epoch'])
-    if epoch != int(rows_b[-1]['epoch']):
-        raise ValueError('Compare runs at the same completed epoch')
+    if epoch is None:
+        epoch = int(rows_a[-1]['epoch'])
+        if epoch != int(rows_b[-1]['epoch']):
+            raise ValueError('Use --epoch to select a shared epoch for unequal run lengths')
+    rows_a = [r for r in rows_a if r['epoch'] <= epoch]
+    rows_b = [r for r in rows_b if r['epoch'] <= epoch]
+    if not rows_a or not rows_b or rows_a[-1]['epoch'] != epoch or rows_b[-1]['epoch'] != epoch:
+        raise ValueError('Requested epoch must exist in both histories')
     output.mkdir(parents=True, exist_ok=True)
     figure, axes = plt.subplots(1, 2, figsize=(11, 4), layout='constrained')
     for rows, label in ((rows_a, 'Baseline'), (rows_b, 'Scale attention')):
         axes[0].plot([r['epoch'] for r in rows], [r['train_mse'] for r in rows], label=label)
         axes[1].plot([r['epoch'] for r in rows], [r['ssim'] for r in rows], label=label)
-    axes[0].set(ylabel='Sampled projection MSE (lower is better)', xlabel='Epoch')
+    axes[0].set(ylabel='Sampled projection MSE (log scale)', xlabel='Epoch', yscale='log')
     axes[1].set(ylabel='Mean slice SSIM (higher is better)', xlabel='Epoch')
     for axis in axes:
         axis.legend()
@@ -72,5 +77,6 @@ if __name__ == '__main__':
     parser.add_argument('baseline', type=Path)
     parser.add_argument('attention', type=Path)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--epoch', type=int, help='Common epoch to compare; must have TIFF snapshots')
     args = parser.parse_args()
-    compare(args.baseline, args.attention, args.output)
+    compare(args.baseline, args.attention, args.output, args.epoch)

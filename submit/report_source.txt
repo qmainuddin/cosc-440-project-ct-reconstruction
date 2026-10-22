@@ -1,0 +1,137 @@
+Scale attention for multiresolution CT reconstruction
+
+Architectural comparison and learning-rate follow-up
+
+Mainuddin Talukdar &nbsp; | &nbsp; Student ID: 81255475<br/>COSC440 Deep Learning Project, 2026 &nbsp; | &nbsp; 22 October 2026
+
+Experimental Design and Methods
+
+<b>Objective and hypothesis.</b> The task is to reconstruct a chest CT volume from the supplied log-transformed X-ray projections. The hypothesis was that allowing coarse and fine embedding scales to interact through attention would improve reconstructed-image SSIM at a matched 50-epoch training budget. This expectation follows the scale-interaction rationale used for the original architectural experiment. The experiment tests this particular design under fixed settings, not whether attention is universally beneficial.
+
+<b>Scientific setting.</b> A coordinate-based model predicts an attenuation coefficient at each 3D position. Integrating these predictions along known rays generates predicted projection values, which are compared with the observed projections. The course brief and CT research slides describe this differentiable reconstruction pipeline [1,2]. The supplied projections are already log transformed, so an additional exponential is not applied.
+
+<b>Completed baseline.</b> Three required operations were implemented. First, rays_to_points samples positions p(t) = o + td, including both near and far endpoints. Second, get_flattened_position converts coordinates into grid cells and uses the index x + ry + r squared z, where r is the grid resolution. Indices are clipped to valid bounds. Third, ray_attenuation uses the trapezoidal integral: each adjacent attenuation pair is averaged, multiplied by its parameter interval, summed and multiplied by the ray-direction magnitude. Constant endpoint extensions also handle interior-only samples.
+
+The baseline uses eight learned embedding grids with resolutions 2, 4, 8, 16, 32, 64, 128 and 256 per axis. Each lookup supplies one scalar. The eight scalars are concatenated, passed through a 64-unit SiLU dense layer, and mapped to one unconstrained attenuation value. The nearest-cell lookup is discrete; gradients update selected embedding values and network weights, not the integer lookup indices. This follows the multiscale construction in the course material [2].
+
+<b>Validation.</b> The supplied print-out test was executed and its deterministic indexing and integration examples agree with the expected values. Five additional assertion-based tests passed on the Mac CPU: ray sampling, analytic integration and gradients, indexing boundaries, training/checkpoint restoration for both models, and display/metric edge cases. These checks support implementation correctness but do not guarantee successful optimisation of the larger model. The original lab logs separately demonstrate the five full GPU experiment histories [3].
+
+
+--- PAGE ---
+
+
+Experimental Design and Methods (continued)
+
+<b>Architectural modification.</b> ScaleAttentionModel retains the embedding grids but stacks their values as eight scale tokens at each spatial position. A shared dense projection expands each scalar to width 8. A learned 8-by-8 scale-identity array distinguishes coarse from fine scales. Two-head self-attention (key dimension 4 per head, dropout 0) lets tokens interact. A residual addition and layer normalisation are applied before flattening the 8-by-8 representation into 64 features and passing it to the dense prediction head. Attention acts across scales at the same point, not across neighbouring voxels or rays.
+
+This is a substantive architectural change: it changes how scale information is combined using a new attention layer, rather than only changing a learning rate or adding another dense layer. It also changes the head input width and adds normalisation and scale identities. Consequently, the experiment measures the combined design, not the isolated causal contribution of attention.
+
+Setting | Conditions
+
+Data / sampling | Chest: 50 training projections; volume 128 cubed; 2,048 rays per projection, 192 points per ray; all training projections per epoch
+
+Common architecture | Depth 8, scalar embeddings, dense head width 64; attention token width 8, 2 heads
+
+Original comparison | RTX 3090, seed 42, Adam learning rate 0.1, both models 50 epochs
+
+Learning-rate follow-up | RTX 3090, seed 42, attention learning rate 0.001, 100 epochs from fresh initialisation
+
+Matched lower-rate pair | RTX 4070, seed 43, learning rate 0.001, both evaluated at epoch 100; attention extended to epoch 300
+
+Evaluation | Full volume each epoch; query batch 8,192; display/raw snapshots every 10 epochs
+
+Software / parameters | Python 3.12.3, TensorFlow 2.21.0, NumPy 2.5.4; baseline 19,174,601 parameters, attention 19,178,569
+
+<b>Metrics.</b> The training graph reports raw sampled projection MSE, averaged over projection updates during each epoch; it is not a fixed post-epoch test loss. Adam minimises MSE divided by mean squared target projection value, with a denominator floor of 1e-12. Both models use identical seeded ray and projection selections within each matched comparison. For image evaluation, negative predictions are clipped to zero and each predicted volume is independently scaled by its own maximum to uint8. The supplied reference volume is mapped from [0,1] to uint8. TensorFlow SSIM and PSNR are computed per 2D slice and averaged over all 128 slices. Display MSE is computed on the scaled volumes divided by 255. These are image-similarity measures, not calibrated physical attenuation errors.
+
+<b>Comparison scope.</b> Ground truth is used for image evaluation, not as a voxel-wise training target. The supplied validation projections were not evaluated, and no separate patient or scan test set was used. The experiment therefore assesses reconstruction of this supplied scan, not generalisation to new patients. Seeds 42 and 43 were used, but machine and some settings differ between them; they are not pooled as controlled statistical replicates. Matching a learning rate controls one variable but does not guarantee equally suitable optimisation for both architectures.
+
+
+--- PAGE ---
+
+
+Results: matched comparison at the lower learning rate
+
+Figure 1. Baseline and attention on the RTX 4070, seed 43, learning rate 0.001. Both are compared over the first 100 epochs. Raw sampled projection MSE is plotted on a logarithmic scale; mean slice SSIM is higher-is-better. Source: submitted per-epoch CSV records [3].
+
+Epoch / model | Projection MSE | SSIM | PSNR (dB)
+
+50 / baseline | 0.00003362 | 0.6406 | 24.73
+
+50 / attention | 0.00004221 | 0.5183 | 17.67
+
+100 / baseline | 0.00001377 | 0.6612 | 24.70
+
+100 / attention | 0.00002228 | 0.5783 | 19.62
+
+At the matched 100-epoch endpoint, attention has SSIM 0.5783 compared with baseline 0.6612, a difference of -0.08294. Its sampled projection MSE is approximately 1.62 times higher, and its display MSE is 0.01144 compared with 0.00384. Thus, lowering the learning rate produces a usable attention reconstruction but does not make it outperform the baseline under matched conditions.
+
+The original RTX 3090, seed-42 comparison at learning rate 0.1 remains relevant. At epoch 50, baseline SSIM was 0.7129 and attention SSIM was 0.2413. The original attention error jumped at epoch 23 and the final reconstruction was nearly uniform. These negative results were retained rather than replaced by the follow-up experiment.
+
+On the same RTX 3090 and seed, a fresh attention run at learning rate 0.001 reaches SSIM 0.5022 by epoch 50 and 0.5617 by epoch 100. Its epoch-50 projection MSE is 0.00004411, compared with 0.06396 for the original attention run. The matched epoch-50 comparison supports the conclusion that lowering the learning rate greatly improves this attention configuration. It does not establish the exact numerical mechanism of the earlier collapse.
+
+Projection fit alone is insufficient: the lower-rate 3090 attention model has slightly lower projection MSE at epoch 50 than the original higher-rate baseline, yet substantially worse image SSIM. The projection observations do not uniquely guarantee a high-quality reconstruction, and the display metrics use per-volume normalisation. Image structure, SSIM and projection error must be considered together.
+
+
+--- PAGE ---
+
+
+Results: reconstructed anatomy
+
+Figure 2. Reference, baseline at epoch 100, attention at epoch 100, and extended attention at epoch 300 on the RTX 4070 (seed 43). Rows show slices 32, 64 and 96. Grayscale limits are 0-255 after per-volume normalisation. Only the two epoch-100 columns are an equal-budget comparison.
+
+The lower-rate attention images now contain chest anatomy rather than the almost uniform output seen in the original experiment. Compare the lung cavities, central structures and chest outline with the reference. Both methods still lose fine detail; the matched quantitative results favour the baseline. The epoch-300 attention output is included to reveal the effect of additional training, not to present a matched comparison against the epoch-100 baseline.
+
+At epoch 300, attention reaches SSIM 0.6331, PSNR 21.40 dB and projection MSE 0.000005175. Its projection fit is better than the baseline at epoch 100, but its SSIM is still below the baseline value of 0.6612, despite three times as many epochs. The attention result therefore demonstrates improvement with training without establishing an architectural advantage.
+
+All 60 available raw/display snapshot pairs across the five full runs were checked for matching shape, finite values, correct display scaling and agreement with the recorded display MSE. The CSV histories are contiguous. Available log entries match the corresponding CSV rows. These checks support evidence integrity; they do not replace the experimental comparison or demonstrate generalisation.
+
+
+--- PAGE ---
+
+
+Results: optimisation sensitivity and extended training
+
+Figure 3. All attention histories. The seed-42 comparison on the 3090 changes learning rate from 0.1 to 0.001. The seed-43 4070 run also uses 0.001 and extends to 300 epochs. Machine and seed differ across the two lower-rate runs, so differences between them are descriptive rather than isolated hardware or seed effects.
+
+Run / endpoint | SSIM | Projection MSE
+
+3090 attention, LR 0.1, epoch 50 | 0.2413 | 0.0639636
+
+3090 attention, LR 0.001, epoch 100 | 0.5617 | 0.00002456
+
+4070 attention, LR 0.001, epoch 100 | 0.5783 | 0.00002228
+
+4070 attention, LR 0.001, epoch 200 | 0.6198 | 0.00001049
+
+4070 attention, LR 0.001, epoch 300 | 0.6331 | 0.00000517
+
+For the extended 4070 run, SSIM improves by 0.04151 from epochs 100 to 200, then by 0.01331 from epochs 200 to 300. The smaller later increment suggests diminishing gains over these intervals. The best observed SSIM is 0.6357 at epoch 292; the final result is 0.6331. The lower-rate 3090 run peaks at 0.5690 at epoch 99. Best-epoch values are descriptive and were not used to claim a held-out validation result.
+
+<b>Provenance.</b> The earlier runs used the original training source; the new runs use the same model and training functions with only the default learning rate changed from 0.1 to 0.001. Both source versions are included. The latest 4070 attention runtime records a resume from epoch 200 to 300, while the configuration retains its original target of 200. The complete CSV contains epochs 1-300; this is expected for the existing resume implementation.
+
+<b>Evidence limits.</b> The supplied 4070 attention terminal log contains epochs 201-300 only. Earlier epochs are supported by the CSV and ten-epoch image snapshots, not by a complete terminal transcript. The original 3090 attention log was recovered from Git commit 71fc796 because its filename was overwritten by a later failed attempt to reuse a non-empty output folder. That failed attempt is archived separately. Neither the recovered log nor the missing transcript segment is fabricated.
+
+
+--- PAGE ---
+
+
+Conclusions
+
+<b>Hypothesis.</b> The proposed scale-attention design did not improve image similarity over the baseline in either matched comparison: 50 epochs at learning rate 0.1 on seed 42, or 100 epochs at learning rate 0.001 on seed 43. The architectural hypothesis is therefore not supported under the tested conditions. However, the conclusion is more informative than the initial failure alone: attention is strongly sensitive to optimisation settings, and the lower learning rate produces meaningful reconstructions.
+
+<b>Interpretation.</b> Reducing the learning rate by a factor of 100 avoids the observed near-uniform collapse in the seed-42 follow-up. Since the model architecture and ray budget are unchanged, this is direct evidence of learning-rate sensitivity for that configuration. It is consistent with excessively large parameter updates contributing to the earlier failure, but gradient norms and attention distributions were not recorded, so a precise mechanism cannot be established. Layer normalisation, scale mixing and head changes remain possible contributing factors.
+
+<b>Implications.</b> More complex feature aggregation is not automatically better. A simple multiscale baseline can outperform attention while using fewer parameters. Moreover, lower projection loss does not necessarily imply a better reconstructed image. A useful evaluation should report multiple metrics and inspect anatomy, rather than selecting the lowest training loss or the longest-trained model.
+
+<b>Limitations.</b> These are reconstructions of one supplied scan, not tests on unseen patients. The supplied validation projections were not evaluated. Seed, hardware and training budget vary across some runs; only explicitly matched comparisons support architectural claims. The whole modified design includes attention, token projection, scale identities, residual addition and layer normalisation, so the effect of each component is not isolated. No statistical significance or calibrated physical accuracy is claimed. CPU/GPU timings are not used to infer a hardware speedup.
+
+<b>Future work.</b> A targeted alternative is multiscale trilinear lookup, which would blend neighbouring grid features instead of selecting a single cell. This directly addresses spatial discontinuities while retaining the prediction head. Further attention studies could test a direct baseline-feature residual path, gated corrections, gradient clipping and normalisation ablations. A balanced multi-seed learning-rate study and evaluation on withheld projection angles would strengthen the conclusions. These are future experiments; no trilinear training result is claimed in this report.
+
+References
+
+[1] COSC440 Project 2026, supplied course brief, pp. 2-7: pipeline, significant changes, report requirements and marking criteria. [2] 3D Reconstruction Research, research_ct_only.pdf, slides 11-16: encoding, embeddings, integration and suggested modifications; research.pdf provides broader context. [3] Submitted results/ contains all five original CSV/configuration/runtime records. evidence/ contains available terminal logs, recovered historical evidence, test output and screenshots.
+
+AI-use declaration
+
+OpenAI Codex was used to assist with code implementation, debugging, tests, experiment instructions, result validation, figure generation, report drafting and submission packaging. The GPU experiments were executed by the student on university lab machines. The report uses the recorded outputs; AI assistance was not used to invent measurements. This declaration applies to the whole submitted project.

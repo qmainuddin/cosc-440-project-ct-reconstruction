@@ -5,7 +5,7 @@ Line numbers describe the delivered version. Counts are inclusive physical sourc
 
 ## What is complete and what remains
 
-The code implements baseline reconstruction, a significant scale-attention modification, tests, training, checkpoints, evaluation, graphs, GPU launching and lab/submission instructions. Full 50-epoch GPU experiments, the final assessed report, and submission are still tasks for the student. No improvement, full-mark outcome, or unrun result is claimed.
+The code implements baseline reconstruction, a significant scale-attention modification, tests, training, checkpoints, evaluation, graphs, GPU launching and lab/submission instructions. Five full experiment histories are now available, including lower-rate attention runs to 100 and 300 epochs. The submit folder contains the measured comparison, final report, actual code and execution evidence. The attention experiment performed worse; no improvement, full-mark outcome or unrun result is claimed. The student must review and upload the package.
 
 ## Plain-language pipeline
 
@@ -156,3 +156,74 @@ A checkpoint is a recoverable training save-point. An epoch is a pass through pr
 images (or the explicitly labelled diagnostic subset). A residual connection adds a layer's
 input back to its output; layer normalization rescales token features. These help the
 attention block train, but do not guarantee better reconstruction.
+
+## Baseline result analysis added 21 October 2026
+
+`analyze_baseline.py` is a separate analysis utility; training code is unchanged.
+Its inputs are the baseline run folder, terminal log and source-code folder.
+It validates the complete epoch sequence, finite measurements, log/CSV agreement,
+source hashes, raw/display reconstruction agreement and reconstructed-image MSE.
+It writes learning curves and reconstruction progress in PNG/PDF formats, plus
+`baseline_summary.json` containing measured results and limitations. This baseline-only utility is supplemented by the completed paired comparison and report in submit/.
+
+| File/block | Lines | Count | Reason and input → output |
+|---|---:|---:|---|
+| `analyze_baseline.py`: imports | 1–12 | 12 | Load CSV/JSON, image and plotting utilities; use a display-free plotting backend for SSH |
+| `analyze_baseline.py`: validation | 15–44 | 30 | Run files, log and current sources → verified epoch records and reconstruction volumes; reject inconsistencies |
+| `analyze_baseline.py`: graph export | 45–66 | 22 | Verified measurements and three fixed slices → learning/progress PNG and PDF figures |
+| `analyze_baseline.py`: summary | 67–80 | 14 | Verified rows → measured JSON summary, timing totals and explicit limitations |
+| `analyze_baseline.py`: command-line entry | 83–90 | 8 | Run/log/output/source arguments → analysis execution |
+
+The file contains 90 lines including spacing. Baseline artifacts are under
+`runs/3090-baseline-s42/analysis/`. Validation checks image MSE independently;
+SSIM/PSNR in the summary are the recorded training-run values, not a new evaluation.
+
+## Final comparison and submission packaging (21 October 2026)
+
+Training functions and both architectures were not changed after the experiments.
+Early source hashes match code/historical/project_main_lr01.py; later hashes match submitted project_main.py. Only the default learning rate differs. geometry.py is unchanged.
+Both 50-epoch histories were checked against logs and saved image outputs.
+The actual attention collapse is reported without replacing or hiding its results.
+
+| File / block | Lines | Count | Input, reason and expected output |
+|---|---:|---:|---|
+| compare_runs.py: MSE axis | 40 | 1 | Same recorded MSE values -> logarithmic display, so early large errors do not obscure later trends; no change to measurements |
+| audit_results.py: imports | 1-7 | 7 | CSV/JSON/hash and numerical/image tools -> dependencies for the evidence audit |
+| audit_results.py: per-run audit | 10-41 | 32 | Original runs, logs, source and TIFFs -> assert complete finite records, matching hashes, matching raw/display volumes and recomputed MSE/SSIM; collect measurements |
+| audit_results.py: paired checks and output | 42-51 | 10 | Both audited configurations and reference images -> matched-setting checks and saved JSON summary; fail on inconsistency |
+| audit_results.py: CLI | 53-59 | 7 | Repository root and output path -> execute audit |
+| submit/code/run_experiments.sh: input guards | 1-17 | 17 | Absolute dataset/new-output paths -> reject missing data or an existing output destination; choose interpreter and create output directory |
+| submit/code/run_experiments.sh: tests | 18-20 | 3 | Environment and supplied/assertion tests -> captured logs, exit on failure |
+| submit/code/run_experiments.sh: paired runs | 21-28 | 8 | Course dataset and fixed settings -> fresh baseline/attention training histories and logs |
+| submit/code/run_experiments.sh: figures | 29-30 | 2 | Completed paired runs -> PNG/PDF graphs, reconstruction comparison and numerical summary |
+
+The audit script has 59 lines and the experiment script has 30 lines including
+spacing. The audit utility requires the complete original TIFF run folders;
+these are not duplicated in the submission archive, which excludes datasets.
+The experiment script was syntax-checked; the full 50-epoch runs were not repeated
+locally. Its underlying training code is the same code exercised in the lab.
+
+The six-page updated report follows the brief's Methods, Results and Conclusions
+structure, contains both required figure types, and includes references and the
+project-wide disclosure at its end. Execution_Evidence.pdf indexes original GPU
+logs and fresh local CPU tests. README_SUBMISSION.txt explains reproduction and
+what to upload; MANIFEST_SHA256.txt identifies every packaged file.
+
+## Updated submission: 22 October 2026
+
+The report now includes all five full runs, the controlled seed-43 comparison at
+epoch 100, and the separate 300-epoch attention extension. Learning rate 0.001
+avoids the original collapse but does not outperform baseline SSIM in the
+matched comparison. No trilinear result is included in this submission snapshot.
+
+compare_runs.py now accepts --epoch to compare shared saved epochs across runs
+of different total lengths. It still rejects mismatched common training settings.
+The new block filters both histories to the requested epoch and rejects missing
+epochs before reading matching TIFFs. Input: two full run directories plus epoch;
+output: equal-budget figures and comparison JSON.
+
+The original attention log is recovered from Git 71fc796. The later failed
+non-empty-directory attempt is separately preserved. The 4070 attention terminal
+log covers 201-300 only; its CSV covers 1-300. Screenshots are original lab captures.
+All 600 epoch rows and 60 raw/display snapshots passed structural and image-MSE
+checks. Tests passed on the Mac CPU. Dataset TIFFs and checkpoints are excluded.

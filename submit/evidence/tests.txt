@@ -1,0 +1,11 @@
+/Users/mainuddintalukdar/.matplotlib is not a writable directory
+Matplotlib created a temporary cache directory at /var/folders/qh/9bxrhh011_jcnsmnfhyw5blr0000gn/T/matplotlib-t2idphov because there was an issue with the default path (/Users/mainuddintalukdar/.matplotlib); it is highly recommended to set the MPLCONFIGDIR environment variable to a writable directory, in particular to speed up the import of Matplotlib and to better support multiprocessing.
+Matplotlib is building the font cache; this may take a moment.
+.WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+W0000 00:00:1792637577.917265 86064684 cpu_utils.cc:145] Failed to get CPU frequency: 0 Hz
+W0000 00:00:1792637577.957316 86064684 op_level_cost_estimator.cc:743] Invalid device specifications for CPU: goo.gle/debugstr  type: "CPU" model: "0" num_cores: 10 environment { key: "cpu_instruction_set" value: "ARM NEON" } environment { key: "eigen" value: "3.5.0" } l1_cache_size: 16384 l2_cache_size: 524288 l3_cache_size: 524288 memory_size: 268435456
+....
+----------------------------------------------------------------------
+Ran 5 tests in 1.181s
+
+OK

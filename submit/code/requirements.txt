@@ -1,0 +1,6 @@
+# Shared project dependencies; NVIDIA packages are Linux-only (see README).
+tensorflow==2.21.0
+numpy>=1.26,<3
+scikit-image>=0.23,<1
+matplotlib>=3.8,<4
+tifffile>=2024.1
