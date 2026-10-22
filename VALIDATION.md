@@ -1,15 +1,15 @@
-# Fresh experiment validation - 22 October 2026
+# Validation - 22 October 2026
 
-- CLI defaults verified: seed 50, learning rate 0.0001, epochs 250.
-- python -m unittest test_project: all five tests passed on the Mac CPU.
-- Supplied project_unit_test.py executed successfully; its numerical fixtures are unchanged.
-- bash -n run_lab.sh passed. The launcher requires explicit settings for both hosts.
-- Four launcher tests passed: argument validation, comment naming, command forwarding, and process/log handling (including resume, collision protection and nonzero exit status).
-- No fresh full GPU training has been performed. No new reconstruction quality is claimed.
-- No new local runs/ folder was created during validation; diagnostic output went to /tmp.
-- Historical validation and completed submission materials are in archive/.
-- The complete previous tracked runs and local analysis files are on remote main-backup.
-
-The tests check sampling, integration/gradients, grid indexing, model updates,
-checkpoint restoration and metric/display edge cases. Passing them does not
-predict final reconstruction quality for the new learning rate.
+- All 12 tests passed on the Mac CPU: eight numerical/model tests and four launcher tests.
+- Interpolation checks cover affine fields, corners, clamping, gradients, continuity,
+  unchanged parameter count, model updates and checkpoint restoration.
+- Both Python model choices default to seed 50, learning rate 0.0001 and 250 epochs.
+- Launcher tests verify mandatory settings, safe optional comments, parameter forwarding,
+  resume log append, fresh-log collision protection and propagation of failure exit codes.
+- bash -n run_lab.sh and git diff --check passed.
+- A synthetic baseline/trilinear comparison generated all five expected figure/JSON
+  outputs and rejected a mismatched seed. These temporary fixtures are not research results.
+- Removed-method names/content were checked across remaining tracked files and paths;
+  affected PDF content and screenshots were inspected before selective archive removal.
+- Remaining archive files are historical baseline records/shared utilities, not a
+  complete submission. No new full GPU training or reconstruction quality is claimed.

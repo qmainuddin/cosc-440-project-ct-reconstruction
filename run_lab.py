@@ -9,7 +9,7 @@ import socket
 import subprocess
 import sys
 
-MODELS = ('baseline', 'attention')
+MODELS = ('baseline', 'trilinear')
 HOSTS = {'3090': 'cs23002lv', '4070': 'cs25049kx'}
 
 

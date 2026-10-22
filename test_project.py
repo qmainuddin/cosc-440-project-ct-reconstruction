@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 import numpy as np
 import tensorflow as tf
-from project_main import (MultiScaleVoxelModel, ScaleAttentionModel, rays_to_points,
+from project_main import (MultiScaleVoxelModel, TrilinearVoxelModel, rays_to_points,
                           ray_attenuation, make_train_step, display_volume, volume_metrics)
 
 
@@ -37,7 +37,7 @@ class ProjectTests(unittest.TestCase):
         np.testing.assert_array_equal(boundary, [0, 511])
 
     def test_models_update_and_checkpoint_roundtrip(self):
-        for cls in (MultiScaleVoxelModel, ScaleAttentionModel):
+        for cls in (MultiScaleVoxelModel, TrilinearVoxelModel):
             with self.subTest(model=cls.__name__):
                 tf.keras.utils.set_random_seed(50)
                 model = cls(2., 2, 1)
@@ -51,11 +51,6 @@ class ProjectTests(unittest.TestCase):
                 mse, nmse = step(rays, tf.constant([.3, .5]), tf.constant(0.), tf.constant(.5))
                 self.assertTrue(np.isfinite([mse.numpy(), nmse.numpy()]).all())
                 self.assertTrue(any(not np.array_equal(a, b.numpy()) for a, b in zip(before, model.trainable_variables)))
-                if cls is ScaleAttentionModel:
-                    # Prove the new attention weights affect the optimized loss.
-                    attention_ids = {id(v) for v in model.attention.trainable_variables}
-                    self.assertTrue(any(id(v) in attention_ids and not np.array_equal(a, v.numpy())
-                                        for a, v in zip(before, model.trainable_variables)))
                 expected = model(query).numpy()
                 with tempfile.TemporaryDirectory() as tmp:
                     checkpoint = tf.train.Checkpoint(model=model, optimizer=optimizer)
@@ -67,6 +62,42 @@ class ProjectTests(unittest.TestCase):
                     tf.train.Checkpoint(model=restored, optimizer=opt2).restore(path).assert_consumed()
                     np.testing.assert_allclose(restored(query), expected, atol=1e-7)
                     self.assertEqual(int(opt2.iterations.numpy()), 1)
+
+    def test_trilinear_affine_field_and_corners(self):
+        model = TrilinearVoxelModel(2., 2, 1)
+        model(tf.zeros((1, 3)))
+        for depth, layer in enumerate(model.embedding_layers):
+            r = 2 ** (depth + 1)
+            # x changes fastest, matching the implementation's flat indexing.
+            values = [[1 + 2*x/(r-1) + 3*y/(r-1) + 4*z/(r-1)]
+                      for z in range(r) for y in range(r) for x in range(r)]
+            layer.embeddings.assign(values)
+            positions = tf.constant([[0.,0.,0.], [1.,1.,1.], [.2,.3,.7], [.5,.5,.5]])
+            expected = 1 + 2*positions[:,0] + 3*positions[:,1] + 4*positions[:,2]
+            np.testing.assert_allclose(model.interpolate_scale(positions, depth)[:,0], expected, atol=1e-6)
+
+    def test_trilinear_corner_gradients_and_clamping(self):
+        model = TrilinearVoxelModel(2., 1, 1)
+        model(tf.zeros((1, 3)))
+        table = model.embedding_layers[0].embeddings
+        table.assign(np.arange(8, dtype=np.float32)[:,None])
+        with tf.GradientTape() as tape:
+            output = tf.reduce_sum(model.interpolate_scale(tf.constant([[.5,.5,.5]]), 0))
+        gradient = tf.convert_to_tensor(tape.gradient(output, table)).numpy()
+        np.testing.assert_allclose(gradient, np.full((8,1), .125), atol=1e-7)
+        np.testing.assert_allclose(output, 3.5)
+        np.testing.assert_allclose(model.interpolate_scale(tf.constant([[-1.,-1.,-1.], [2.,2.,2.]]),0), [[0.],[7.]])
+
+    def test_trilinear_continuity_and_parameter_count(self):
+        model = TrilinearVoxelModel(2., 2, 1)
+        baseline = MultiScaleVoxelModel(2., 2, 1)
+        model(tf.zeros((1,3))); baseline(tf.zeros((1,3)))
+        self.assertEqual(model.count_params(), baseline.count_params())
+        # Non-affine grid values check continuity on either side of an internal face.
+        model.embedding_layers[1].embeddings.assign(np.random.default_rng(4).normal(size=(64,1)))
+        p = tf.constant([[1/3-1e-6,.4,.7],[1/3+1e-6,.4,.7]])
+        values = model.interpolate_scale(p,1).numpy()
+        np.testing.assert_allclose(values[0], values[1], atol=3e-5)
 
     def test_zero_volume_and_identical_metrics(self):
         np.testing.assert_array_equal(display_volume(np.zeros((2, 12, 12))), 0)

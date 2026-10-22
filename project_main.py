@@ -1,4 +1,4 @@
-"""COSC440 CT reconstruction: baseline, scale-attention experiment and lab runner."""
+"""COSC440 CT reconstruction: baseline, multiscale trilinear interpolation experiment and lab runner."""
 import argparse
 import csv
 import hashlib
@@ -84,35 +84,40 @@ class MultiScaleVoxelModel(keras.Model):
         return self.output_layer(self.hidden_dense(features))
 
 
-class ScaleAttentionModel(MultiScaleVoxelModel):
-    """Model 2: learned interaction between coarse/fine scale tokens at each point."""
-    def __init__(self, size, n_depth, embedding_dim=1, token_dim=8, heads=2):
-        super().__init__(size, n_depth, embedding_dim)
-        if token_dim < 2 or heads < 1 or token_dim % heads:
-            raise ValueError('token_dim must be >=2 and divisible by heads')
-        self.token_dim = token_dim
-        self.token_projection = keras.layers.Dense(token_dim)
-        self.scale_identity = self.add_weight(
-            name='scale_identity', shape=(n_depth, token_dim),
-            initializer=keras.initializers.RandomNormal(stddev=0.02))
-        self.attention = keras.layers.MultiHeadAttention(
-            num_heads=heads, key_dim=token_dim // heads, dropout=0.0)
-        self.normalization = keras.layers.LayerNormalization()
+class TrilinearVoxelModel(MultiScaleVoxelModel):
+    """Blend eight grid vertices at each scale; retain baseline tables and head."""
+    def interpolate_scale(self, scaled, depth):
+        """[N,3] unit-cube coordinates -> [N,E] continuous interpolated features.
 
-    def call(self, inputs, training=False):
-        tokens = tf.stack(self.embeddings(inputs), axis=1)
-        tokens = self.token_projection(tokens) + self.scale_identity[None, :, :]
-        attended = self.attention(tokens, tokens, training=training)
-        features = self.normalization(tokens + attended)
-        features = tf.reshape(features, [-1, self.n_depth * self.token_dim])
-        return self.output_layer(self.hidden_dense(features))
+        The r grid vertices span [0,1], so grid position is scaled * (r-1).
+        At the upper boundary both corner indices clamp to r-1. Weights remain
+        nonnegative and sum to one; no extra parameters or image filtering.
+        """
+        resolution = 2 ** (depth + 1)
+        grid = tf.clip_by_value(scaled, 0., 1.) * (resolution - 1)
+        lower = tf.cast(tf.floor(grid), tf.int32)
+        upper = tf.minimum(lower + 1, resolution - 1)
+        fraction = grid - tf.cast(lower, grid.dtype)
+        corners = tf.constant([[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0],
+                               [0, 0, 1], [1, 0, 1], [0, 1, 1], [1, 1, 1]], tf.int32)
+        cells = tf.where(corners[None, :, :] == 1, upper[:, None, :], lower[:, None, :])
+        weights = tf.reduce_prod(tf.where(corners[None, :, :] == 1,
+                                         fraction[:, None, :], 1. - fraction[:, None, :]), axis=-1)
+        indices = cells[..., 0] + resolution * cells[..., 1] + resolution ** 2 * cells[..., 2]
+        features = self.embedding_layers[depth](indices)
+        return tf.reduce_sum(features * tf.cast(weights[..., None], features.dtype), axis=1)
+
+    def embeddings(self, inputs):
+        """Physical coordinates -> interpolated features at every existing scale."""
+        scaled = tf.clip_by_value(0.5 + inputs / self.size, 0., 1.)
+        return [self.interpolate_scale(scaled, depth) for depth in range(self.n_depth)]
 
 
 def build_model(config, size):
     """Build variables before optimizer/checkpoint restoration."""
     common = (size, config['depth'], config['embedding_dim'])
-    if config['model'] == 'attention':
-        model = ScaleAttentionModel(*common, config['token_dim'], config['heads'])
+    if config['model'] == 'trilinear':
+        model = TrilinearVoxelModel(*common)
     else:
         model = MultiScaleVoxelModel(*common)
     model(tf.zeros((1, 3), tf.float32))
@@ -337,14 +342,12 @@ def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--dataset', default=str(Path(__file__).parent / 'data/ct_data/chest_50.pickle'))
     parser.add_argument('--output', required=True)
-    parser.add_argument('--model', choices=['baseline', 'attention'], default='baseline')
+    parser.add_argument('--model', choices=['baseline', 'trilinear'], default='baseline')
     parser.add_argument('--epochs', type=int, default=250)
     parser.add_argument('--n-points', type=int, default=192)
     parser.add_argument('--n-rays', type=int, default=2048)
     parser.add_argument('--depth', type=int, default=8)
     parser.add_argument('--embedding-dim', type=int, default=1)
-    parser.add_argument('--token-dim', type=int, default=8)
-    parser.add_argument('--heads', type=int, default=2)
     parser.add_argument('--learning-rate', type=float, default=0.0001)
     parser.add_argument('--seed', type=int, default=50)
     parser.add_argument('--query-batch', type=int, default=8192)

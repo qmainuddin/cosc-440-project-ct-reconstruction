@@ -27,8 +27,8 @@ def compare(first, second, output, epoch=None):
                 'embedding_dim', 'learning_rate', 'max_projections'):
         if a[key] != b[key]:
             raise ValueError(f'Unmatched experiment setting: {key}')
-    if a['model'] != 'baseline' or b['model'] != 'attention':
-        raise ValueError('Supply baseline first, attention second')
+    if a['model'] != 'baseline' or b['model'] != 'trilinear':
+        raise ValueError('Supply baseline first, trilinear second')
     if epoch is None:
         epoch = int(rows_a[-1]['epoch'])
         if epoch != int(rows_b[-1]['epoch']):
@@ -39,7 +39,7 @@ def compare(first, second, output, epoch=None):
         raise ValueError('Requested epoch must exist in both histories')
     output.mkdir(parents=True, exist_ok=True)
     figure, axes = plt.subplots(1, 2, figsize=(11, 4), layout='constrained')
-    for rows, label in ((rows_a, 'Baseline'), (rows_b, 'Scale attention')):
+    for rows, label in ((rows_a, 'Baseline'), (rows_b, 'Multiscale trilinear')):
         axes[0].plot([r['epoch'] for r in rows], [r['train_mse'] for r in rows], label=label)
         axes[1].plot([r['epoch'] for r in rows], [r['ssim'] for r in rows], label=label)
     axes[0].set(ylabel='Sampled projection MSE (log scale)', xlabel='Epoch', yscale='log')
@@ -57,15 +57,15 @@ def compare(first, second, output, epoch=None):
     figure, axes = plt.subplots(len(indices), 3, figsize=(9, 3 * len(indices)), squeeze=False,
                                 layout='constrained')
     for row, z in enumerate(indices):
-        for column, (label, volume) in enumerate(zip(['Ground truth', 'Baseline', 'Scale attention'], volumes)):
+        for column, (label, volume) in enumerate(zip(['Ground truth', 'Baseline', 'Multiscale trilinear'], volumes)):
             axes[row, column].imshow(volume[z], cmap='gray', vmin=0, vmax=255)
             axes[row, column].set_title(f'{label} | slice {z}')
             axes[row, column].axis('off')
     figure.savefig(output / 'reconstruction_comparison.png', dpi=180)
     figure.savefig(output / 'reconstruction_comparison.pdf')
     plt.close(figure)
-    summary = {'epoch': epoch, 'baseline': rows_a[-1], 'attention': rows_b[-1],
-               'attention_minus_baseline': {key: rows_b[-1][key] - rows_a[-1][key]
+    summary = {'epoch': epoch, 'baseline': rows_a[-1], 'trilinear': rows_b[-1],
+               'trilinear_minus_baseline': {key: rows_b[-1][key] - rows_a[-1][key]
                                             for key in ('train_mse', 'ssim', 'display_mse')},
                'caution': 'Training-fit metrics, not held-out generalization. Images use per-volume scaling.'}
     (output / 'comparison.json').write_text(json.dumps(summary, indent=2) + '\n')
@@ -75,8 +75,8 @@ def compare(first, second, output, epoch=None):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('baseline', type=Path)
-    parser.add_argument('attention', type=Path)
+    parser.add_argument('trilinear', type=Path)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--epoch', type=int, help='Common epoch to compare; must have TIFF snapshots')
     args = parser.parse_args()
-    compare(args.baseline, args.attention, args.output, args.epoch)
+    compare(args.baseline, args.trilinear, args.output, args.epoch)

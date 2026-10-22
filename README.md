@@ -1,4 +1,4 @@
-# COSC440: baseline and attention reconstruction
+# COSC440: baseline and trilinear reconstruction
 
 The Python training defaults remain seed **50**, learning rate **0.0001** and
 **250 epochs**. The lab launcher requires you to state these values explicitly.
@@ -15,8 +15,8 @@ machines share the same home-directory checkout. On the lab machine:
 cd "$HOME/Desktop/cosc-440-project/cosc-440-project-ct-reconstruction"
 git status --short
 git fetch origin
-git switch main
-git pull --ff-only origin main
+git switch main-skalaton-multiscale-trilinear-interpolation-no-training
+git pull --ff-only origin main-skalaton-multiscale-trilinear-interpolation-no-training
 source "$HOME/.venvs/cosc440-$(hostname -s)/bin/activate"
 python -m pip check
 nvidia-smi
@@ -40,7 +40,7 @@ All five experiment arguments are mandatory; only COMMENTS may be omitted.
 | Argument | Meaning and allowed values |
 |---|---|
 | ENVIRONMENT | `3090` on cs23002lv or `4070` on cs25049kx; a mismatch stops the launcher |
-| MODEL | `baseline` or `attention`; each invocation trains exactly one model |
+| MODEL | `baseline` or `trilinear`; each invocation trains exactly one model |
 | SEED | Integer 0 through 4294967295; use `50` for the planned experiment |
 | LEARNING_RATE | Finite positive number; use `0.0001` |
 | EPOCHS | Positive total epoch count; use `250` |
@@ -56,12 +56,12 @@ For example, on the 3090:
 
 ```bash
 bash run_lab.sh 3090 baseline 50 0.0001 250
-bash run_lab.sh 3090 attention 50 0.0001 250 changed-learning-rate
+bash run_lab.sh 3090 trilinear 50 0.0001 250 changed-learning-rate
 ```
 
 The second command writes:
-- `logs/3090-attention-s50-lr0.0001-e250-changed-learning-rate.log`
-- `runs/3090-attention-s50-lr0.0001-e250-changed-learning-rate/`
+- `logs/3090-trilinear-s50-lr0.0001-e250-changed-learning-rate.log`
+- `runs/3090-trilinear-s50-lr0.0001-e250-changed-learning-rate/`
 
 On the 4070, replace `3090` with `4070`. No SSH connection is made by the script.
 Use matching seed, learning rate, epochs and sampling settings for a fair model
@@ -104,7 +104,7 @@ Use the actual folders, including comments if supplied:
 
 ```bash
 python compare_runs.py runs/3090-baseline-s50-lr0.0001-e250 \
-  runs/3090-attention-s50-lr0.0001-e250-changed-learning-rate \
+  runs/3090-trilinear-s50-lr0.0001-e250-changed-learning-rate \
   --epoch 250 --output runs/3090-comparison-s50-e250
 ```
 
@@ -125,8 +125,24 @@ metrics, not held-out generalisation. No improved accuracy is promised.
 - `compare_runs.py`: matching-settings checks, graphs and image comparison.
 - `explanation.md` / `VALIDATION.md`: change explanations and executed checks.
 
-Historical records are in `archive/` and `main-backup`; their original settings
-remain unchanged. No fresh full training or new submission report is included.
-Do not relabel archived results as new experiments. Commit results only after
-completion; exclude datasets, environments and checkpoints. Pulling Git changes
-does not remove ignored or untracked files left on lab machines.
+No new full training results or completed submission are included in this branch.
+The remaining archive/ files are historical baseline records and shared utilities,
+not a complete submission and not evidence for the new method. Rebuild the report
+from actual new measurements. Exclude datasets, environments and checkpoints from
+Git. Pulling changes does not remove ignored or untracked lab outputs.
+
+## How multiscale trilinear interpolation works
+
+The baseline looks up one grid cell per scale. The modified model blends the eight
+surrounding grid vertices at each of the same scales. Each corner gets a weight
+based on the point's distance along x, y and z. For example, at the centre of a
+cube, all eight weights are 1/8: corner values 0 through 7 give (0+1+2+3+4+5+6+7)/8
+= 3.5. On a corner, that corner's value is returned exactly.
+
+For resolution r, vertex coordinates span 0 through r-1. Inputs outside the volume
+are clamped to its boundary. Features are concatenated and passed through the same
+64-unit prediction head as the baseline. This adds no trainable parameters; it
+adds eight-corner lookup and weighting work and gives continuous features across
+grid faces. It is a learned representation change, not smoothing the final TIFF.
+Smoother features may reduce block boundaries, but sharper structures and accuracy
+must be assessed from measured MSE, SSIM and images after matched training.
