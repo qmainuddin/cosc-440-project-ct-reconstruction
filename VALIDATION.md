@@ -3,7 +3,8 @@
 - CLI defaults verified: seed 50, learning rate 0.0001, epochs 250.
 - python -m unittest test_project: all five tests passed on the Mac CPU.
 - Supplied project_unit_test.py executed successfully; its numerical fixtures are unchanged.
-- bash -n run_lab.sh passed. The launcher uses seed 50 and rate 0.0001 for both hosts.
+- bash -n run_lab.sh passed. The launcher requires explicit settings for both hosts.
+- Four launcher tests passed: argument validation, comment naming, command forwarding, and process/log handling (including resume, collision protection and nonzero exit status).
 - No fresh full GPU training has been performed. No new reconstruction quality is claimed.
 - No new local runs/ folder was created during validation; diagnostic output went to /tmp.
 - Historical validation and completed submission materials are in archive/.

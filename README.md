@@ -1,27 +1,15 @@
-# COSC440: fresh baseline and attention experiments
+# COSC440: baseline and attention reconstruction
 
-Active branch: main. Fresh experiment settings:
+The Python training defaults remain seed **50**, learning rate **0.0001** and
+**250 epochs**. The lab launcher requires you to state these values explicitly.
+Both models use depth 8, embedding width 1, 192 points per ray, 2,048 rays per
+projection, Adam, and all training projections. Reconstruction metrics are saved
+every epoch, and TIFF snapshots every 10 epochs and at the final epoch.
 
-- Seed: **50** for every model on both machines.
-- Learning rate: **0.0001** (1e-4) for every model.
-- Epochs: **250** for both baseline and attention.
-- Depth 8, embedding width 1, 192 points per ray, 2,048 rays per projection.
-- Adam optimiser; all training projections; reconstruction evaluated every epoch.
+## Get the code and environment
 
-The previous runs/ folder has been removed. The remote main-backup branch preserves
-all prior tracked runs and the local analysis artifacts. archive/ retains the old
-submission, logs, screenshots, original starter and documentation with their actual
-historical settings. Those are NOT results for this fresh experiment. No fresh
-seed-50 result or replacement final report has yet been produced.
-
-The main branch contains baseline and attention. Trilinear development is still on
-multiscale-trilinear-interpolation; this reset does not alter that separate branch.
-
-## Get the updated code on a UC machine
-
-Wait for any existing training jobs to finish or stop them deliberately before
-switching branches. Both UC machines share the same home-directory checkout.
-Update it once, before starting jobs on either machine:
+Wait until existing jobs finish before pulling or switching branches: both UC
+machines share the same home-directory checkout. On the lab machine:
 
 ```bash
 cd "$HOME/Desktop/cosc-440-project/cosc-440-project-ct-reconstruction"
@@ -29,122 +17,116 @@ git status --short
 git fetch origin
 git switch main
 git pull --ff-only origin main
-```
-
-Do not discard local modifications if Git reports a conflict. Git removes tracked
-run files deleted by this update, but it does not delete ignored checkpoints or
-untracked local outputs. Therefore a lab checkout may still have leftover runs/.
-Keep them out of the new experiment; the new names below never reuse old folders.
-Local Mac deletion does not automatically remove every untracked file on a lab PC.
-
-## Environment and supplied dataset
-
-The helper recognises cs23002lv (3090) and cs25049kx (4070), and uses the existing
-host-specific Python environment. Keep course data at data/ct_data/chest_50.pickle.
-
-```bash
 source "$HOME/.venvs/cosc440-$(hostname -s)/bin/activate"
 python -m pip check
 nvidia-smi
+python -m unittest test_project test_run_lab
 ```
 
-For a new environment, install requirements-linux.txt in that environment. The
-requirements.txt file specifies shared dependencies. requirements-installed-local.txt
-records the earlier lab environment, not fresh experiment outcomes. No new Python
-packages are needed for the settings change.
+Keep the supplied dataset at `data/ct_data/chest_50.pickle`. Existing environments
+need no new packages. New environments use `requirements-linux.txt`.
+`COSC440_DATASET` and `COSC440_PYTHON` can override the dataset and interpreter.
+`gpu_python.py` makes the installed NVIDIA libraries discoverable.
 
-## Verify before full training
+## Required run arguments
+
+```text
+bash run_lab.sh ENVIRONMENT MODEL SEED LEARNING_RATE EPOCHS [COMMENTS] [--resume]
+```
+
+All five experiment arguments are mandatory; only COMMENTS may be omitted.
+`--resume` is an optional operating mode, not an experiment setting.
+
+| Argument | Meaning and allowed values |
+|---|---|
+| ENVIRONMENT | `3090` on cs23002lv or `4070` on cs25049kx; a mismatch stops the launcher |
+| MODEL | `baseline` or `attention`; each invocation trains exactly one model |
+| SEED | Integer 0 through 4294967295; use `50` for the planned experiment |
+| LEARNING_RATE | Finite positive number; use `0.0001` |
+| EPOCHS | Positive total epoch count; use `250` |
+| COMMENTS | Optional description, e.g. `changed-learning-rate`; quote text containing spaces |
+
+Comments are lowercased, spaces/punctuation become hyphens, and path separators
+cannot create directories. Use at most 80 characters after sanitising.
+The name is `ENV-MODEL-sSEED-lrRATE-eEPOCHS[-COMMENT]` for both the run folder
+under `runs/` and the `.log` file under `logs/`. Equivalent rates such as `.0001`
+and `1e-4` produce the same name. Comments are labels; they do not change training.
+
+For example, on the 3090:
 
 ```bash
-bash run_lab.sh smoke
+bash run_lab.sh 3090 baseline 50 0.0001 250
+bash run_lab.sh 3090 attention 50 0.0001 250 changed-learning-rate
 ```
 
-This runs the five assertion tests, then one full-size attention epoch on only two
-projections to check GPU availability/memory. The diagnostic folder is timestamped.
-It uses seed 50 and learning rate 0.0001, but is NOT a full experimental run.
-Stop on errors and retain the output before changing settings.
+The second command writes:
+- `logs/3090-attention-s50-lr0.0001-e250-changed-learning-rate.log`
+- `runs/3090-attention-s50-lr0.0001-e250-changed-learning-rate/`
 
-## Full experiment on either machine
+On the 4070, replace `3090` with `4070`. No SSH connection is made by the script.
+Use matching seed, learning rate, epochs and sampling settings for a fair model
+comparison. Different GPUs with the same seed are not independent-seed replicates.
+
+## Overnight training and resume
+
+The launcher creates and streams the detailed experiment log itself:
 
 ```bash
-mkdir -p logs
-nohup bash run_lab.sh train > "logs/fresh-$(hostname -s)-launch.log" 2>&1 &
-echo "Training process ID: $!"
-tail -f "logs/fresh-$(hostname -s)-launch.log"
+nohup bash run_lab.sh 3090 baseline 50 0.0001 250 > /tmp/cosc440-baseline-launch.log 2>&1 &
+echo "Process ID: $!"
+tail -f logs/3090-baseline-s50-lr0.0001-e250.log
 ```
 
-The helper trains baseline first, then attention, each for 250 epochs, and generates
-comparison figures. Ctrl+C stops tail, not training. nohup survives SSH disconnect;
-it does not survive shutdown. Do not start a second job against the same folders.
+Run the second model after the first finishes, or on the other available machine.
+Ctrl+C stops `tail`, not the background job. `nohup` survives SSH disconnection,
+but not shutdown. Do not run two jobs against the same output directory.
+For a short GPU check, use `1` epoch and a comment such as `smoke`; this still
+uses all projections and must not be treated as the full experiment.
 
-| Host | Baseline output | Attention output |
-|---|---|---|
-| cs23002lv | runs/3090-baseline-s50-lr1e-4 | runs/3090-attention-s50-lr1e-4 |
-| cs25049kx | runs/4070-baseline-s50-lr1e-4 | runs/4070-attention-s50-lr1e-4 |
-
-Both machines now use seed 50. Runs on different GPUs are not independent-seed
-replicates, and identical numeric results across hardware are not guaranteed.
-Prefer comparing the two models on the same machine with the same budget.
-
-If interrupted, confirm the earlier job has stopped, then:
+If interrupted, confirm the old process has stopped and repeat the exact original
+arguments (including comment), adding `--resume`:
 
 ```bash
-nohup bash run_lab.sh resume > "logs/fresh-$(hostname -s)-resume.log" 2>&1 &
+bash run_lab.sh 3090 baseline 50 0.0001 250 --resume
 ```
 
-Existing runs must match seed, learning rate, dataset and sampling settings.
-Incomplete runs require resume; completed matching runs are reused. Checkpoints
-are required for resume and remain local. A fresh run must not use --resume.
-A stale .running lock must only be removed after confirming no job is active.
+This targets 250 total epochs, not 250 additional epochs. Checkpoints must exist.
+The training code checks the saved configuration and rejects incompatible resume.
+An existing log is appended only with `--resume`; fresh runs cannot overwrite it.
+A stale `.running` lock must only be removed after confirming no job is active.
+To extend a completed run to a different total budget, use `project_main.py`
+directly with its existing `--output`, matching settings, `--epochs` and `--resume`;
+the launcher includes the budget in the folder name and will not guess an old path.
 
-## Manual commands (activated environment, project root)
+## Graphs and measured comparison
 
-Use unique output folders. Example for the 3090:
+Use the actual folders, including comments if supplied:
 
 ```bash
-python gpu_python.py project_main.py --model baseline \
-  --output runs/3090-baseline-s50-lr1e-4 \
-  --seed 50 --learning-rate 0.0001 --epochs 250 --device gpu
-python gpu_python.py project_main.py --model attention \
-  --output runs/3090-attention-s50-lr1e-4 \
-  --seed 50 --learning-rate 0.0001 --epochs 250 --device gpu
-python compare_runs.py runs/3090-baseline-s50-lr1e-4 \
-  runs/3090-attention-s50-lr1e-4 --epoch 250 --output runs/3090-attention-comparison-s50
+python compare_runs.py runs/3090-baseline-s50-lr0.0001-e250 \
+  runs/3090-attention-s50-lr0.0001-e250-changed-learning-rate \
+  --epoch 250 --output runs/3090-comparison-s50-e250
 ```
 
-For the 4070 change the folder prefix to 4070, keeping seed 50 and learning rate
-0.0001. Alternatively, `bash run_lab.sh compare` chooses the host-specific folders.
-The helper accepts COSC440_DATASET and COSC440_PYTHON environment overrides for
-an alternative absolute dataset path or Python executable.
+This writes learning curves and reconstruction comparisons as PNG/PDF and measured
+metric differences as JSON. Each training run contains `config.json`,
+`runtime.json`, `metrics.csv`, ground-truth and reconstruction TIFFs, and local
+checkpoints. Preserve logs and screenshots for the report. These are training-fit
+metrics, not held-out generalisation. No improved accuracy is promised.
 
-## What to collect
+## Project files and submission status
 
-Each full run records config.json, runtime.json, metrics.csv, raw/display TIFFs,
-reference TIFF and local checkpoints. Preserve terminal logs and screenshots.
-The comparison writes PNG/PDF learning curves and three-slice images, plus JSON
-metric differences. A lower learning rate may learn more slowly; it does not
-promise higher SSIM after the 250-epoch budget.
+- `project_main.py`: models, sampling, integration, training, evaluation and checkpoints.
+- `geometry.py`: supplied scan geometry and dataset loader.
+- `project_unit_test.py`: supplied numerical examples.
+- `test_project.py`: numerical, gradient, model-update and checkpoint assertions.
+- `run_lab.sh` / `run_lab.py`: argument validation, model launch and named logging.
+- `test_run_lab.py`: required arguments, comment handling and command-forwarding tests.
+- `compare_runs.py`: matching-settings checks, graphs and image comparison.
+- `explanation.md` / `VALIDATION.md`: change explanations and executed checks.
 
-Commit the new run folders and logs only after completion; exclude course datasets,
-virtual environments and checkpoints. Rebuild the report and submission from the
-actual fresh measurements. The archived PDF must not be relabelled as seed-50 work.
-
-## Code overview and checks
-
-- project_main.py: baseline/attention models, sampling, integration, training,
-  checkpoints, evaluation and command-line settings.
-- geometry.py: supplied scan geometry and dataset loader.
-- gpu_python.py: makes installed NVIDIA libraries discoverable before Python starts.
-- project_unit_test.py: supplied print-out test; leave its numerical examples intact.
-- test_project.py: assertion tests, using seed 50 and optimiser rate 0.0001.
-- compare_runs.py: validates matching settings and compares a shared saved epoch.
-- run_lab.sh: lab smoke/train/resume/compare launcher for these fresh settings.
-
-```bash
-python -m unittest test_project
-python project_unit_test.py
-```
-
-Original test coordinates and package version numbers are not training seeds or
-learning rates; they are deliberately unchanged. See explanation.md for exact edits
-and VALIDATION.md for the checks actually performed.
+Historical records are in `archive/` and `main-backup`; their original settings
+remain unchanged. No fresh full training or new submission report is included.
+Do not relabel archived results as new experiments. Commit results only after
+completion; exclude datasets, environments and checkpoints. Pulling Git changes
+does not remove ignored or untracked files left on lab machines.
