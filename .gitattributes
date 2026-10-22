@@ -1,0 +1,3 @@
+# Preserve exact evidence bytes so packaged checksums also verify after checkout.
+submit/** -text
+*.zip binary

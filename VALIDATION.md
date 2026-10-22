@@ -41,3 +41,15 @@ submission-quality results. Do not use their metric differences as evidence for 
 
 Final restart guards were also exercised: a valid no-op resume succeeds; an attempted fresh
 run into a nonempty folder is rejected; resume with a changed seed is rejected.
+
+## 22 October 2026: trilinear branch
+
+- Eight assertion tests passed on Mac CPU, including affine interpolation, corner
+  weights/gradients, clamping, continuity, equal parameter count and checkpoints.
+- Real-Chest diagnostic run: depth 3, rays 16, points 8, two projections, seed 43,
+  learning rate .001. Trilinear trained epoch 1, then resumed to epoch 2; matching
+  baseline trained two epochs. CSVs, raw/display TIFFs and comparison figures
+  generated successfully. These are diagnostic runs, not reported GPU experiments.
+- Lab helper syntax checked with bash -n; GPU execution remains for the user.
+- Submission snapshot covers all five completed baseline/attention experiments.
+  Its source intentionally differs from root trilinear-branch source.

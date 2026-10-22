@@ -1,3 +1,8 @@
+> On the trilinear branch, earlier line-number tables below refer to the frozen
+> baseline/attention source in `submit/code/`. The final section gives current
+> root-source line numbers for the new method. The submitted report remains based
+> only on completed lab experiments.
+
 # Explanation of the COSC440 implementation
 
 All paths below are relative to `final-codes/`. Source files are inside `COSC440Project_StudentRelease_2026_v4/`.
@@ -227,3 +232,37 @@ non-empty-directory attempt is separately preserved. The 4070 attention terminal
 log covers 201-300 only; its CSV covers 1-300. Screenshots are original lab captures.
 All 600 epoch rows and 60 raw/display snapshots passed structural and image-MSE
 checks. Tests passed on the Mac CPU. Dataset TIFFs and checkpoints are excluded.
+
+## Trilinear branch implementation (22 October 2026)
+
+| File / block | Lines | Count | Input -> output, purpose and behaviour |
+|---|---:|---:|---|
+| project_main.py: TrilinearVoxelModel | 87-113 | 27 | Physical positions -> interpolated multiscale features; inherited dense head produces attenuation |
+| project_main.py: interpolate_scale | 89-108 | 20 | [N,3] unit coordinates and depth -> [N,E] weighted sum of eight neighbouring grid vertices; clamp at both boundaries |
+| project_main.py: embeddings | 110-113 | 4 | Physical coordinates -> scale-specific features using the same size normalisation as baseline |
+| project_main.py: model factory | 145-146 | 2 | model=trilinear -> construct the new class with existing depth/embedding settings |
+| project_main.py: CLI choice | 371 | 1 | --model trilinear -> select the new method without changing baseline/attention behaviour |
+| test_project.py: checkpoint loop | 40 | 1 | Includes trilinear in update and exact checkpoint-restoration checks |
+| test_project.py: interpolation tests | 71-104 | 34 | Affine fields, corners, clamping, gradient distribution, internal-face continuity and parameter count -> assertions |
+| compare_runs.py: model selection / label | 30-32 | 3 | Accept attention or trilinear as modified model; figures use the correct label |
+| compare_runs.py: summary | 68-71 | 4 | Model-dependent JSON key and differences -> correctly named numerical results |
+
+Root project_main.py now has 398 lines, test_project.py 116, compare_runs.py 83.
+The trilinear grid uses vertices at scaled coordinates i/(r-1), whereas the original
+baseline uses floor(scaled*r) cell lookup. Both have the same table sizes and
+parameter count. Interpolation changes representation/lookup, not the final TIFF.
+
+run_trilinear_lab.sh provides smoke, train, resume and compare actions. It detects
+the two known hosts, sets seed/output paths, checks baseline compatibility,
+uses the existing host-specific environment, and appends logs. The 3090 receives
+a new LR .001 baseline; the completed matching 4070 baseline can be reused.
+README.md provides setup, overnight execution, monitoring, resume and result-return
+commands. The script was syntax-checked; GPU execution is performed by the user.
+
+Eight unit tests passed locally. A small real-Chest CPU run used depth 3, 16 rays,
+8 points and 2 projections: trilinear trained for one epoch, resumed to two, and
+was compared with a matching two-epoch baseline. TIFF/CSV/checkpoint/figure output
+worked. These diagnostics do not establish full-budget GPU quality or improvement.
+
+submit/ and its ZIP remain the completed attention submission snapshot. New
+trilinear results must be reviewed before adding them to that report.

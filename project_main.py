@@ -1,4 +1,4 @@
-"""COSC440 CT reconstruction: baseline, scale-attention experiment and lab runner."""
+"""COSC440 CT reconstruction: baseline, attention and trilinear experiments with lab runner."""
 import argparse
 import csv
 import hashlib
@@ -84,6 +84,35 @@ class MultiScaleVoxelModel(keras.Model):
         return self.output_layer(self.hidden_dense(features))
 
 
+class TrilinearVoxelModel(MultiScaleVoxelModel):
+    """Blend eight grid vertices at each scale; retain baseline tables and head."""
+    def interpolate_scale(self, scaled, depth):
+        """[N,3] unit-cube coordinates -> [N,E] continuous interpolated features.
+
+        The r grid vertices span [0,1], so grid position is scaled * (r-1).
+        At the upper boundary both corner indices clamp to r-1. Weights remain
+        nonnegative and sum to one; no extra parameters or image filtering.
+        """
+        resolution = 2 ** (depth + 1)
+        grid = tf.clip_by_value(scaled, 0., 1.) * (resolution - 1)
+        lower = tf.cast(tf.floor(grid), tf.int32)
+        upper = tf.minimum(lower + 1, resolution - 1)
+        fraction = grid - tf.cast(lower, grid.dtype)
+        corners = tf.constant([[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0],
+                               [0, 0, 1], [1, 0, 1], [0, 1, 1], [1, 1, 1]], tf.int32)
+        cells = tf.where(corners[None, :, :] == 1, upper[:, None, :], lower[:, None, :])
+        weights = tf.reduce_prod(tf.where(corners[None, :, :] == 1,
+                                         fraction[:, None, :], 1. - fraction[:, None, :]), axis=-1)
+        indices = cells[..., 0] + resolution * cells[..., 1] + resolution ** 2 * cells[..., 2]
+        features = self.embedding_layers[depth](indices)
+        return tf.reduce_sum(features * tf.cast(weights[..., None], features.dtype), axis=1)
+
+    def embeddings(self, inputs):
+        """Physical coordinates -> interpolated features at every existing scale."""
+        scaled = tf.clip_by_value(0.5 + inputs / self.size, 0., 1.)
+        return [self.interpolate_scale(scaled, depth) for depth in range(self.n_depth)]
+
+
 class ScaleAttentionModel(MultiScaleVoxelModel):
     """Model 2: learned interaction between coarse/fine scale tokens at each point."""
     def __init__(self, size, n_depth, embedding_dim=1, token_dim=8, heads=2):
@@ -113,6 +142,8 @@ def build_model(config, size):
     common = (size, config['depth'], config['embedding_dim'])
     if config['model'] == 'attention':
         model = ScaleAttentionModel(*common, config['token_dim'], config['heads'])
+    elif config['model'] == 'trilinear':
+        model = TrilinearVoxelModel(*common)
     else:
         model = MultiScaleVoxelModel(*common)
     model(tf.zeros((1, 3), tf.float32))
@@ -337,7 +368,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--dataset', default=str(Path(__file__).parent / 'data/ct_data/chest_50.pickle'))
     parser.add_argument('--output', required=True)
-    parser.add_argument('--model', choices=['baseline', 'attention'], default='baseline')
+    parser.add_argument('--model', choices=['baseline', 'attention', 'trilinear'], default='baseline')
     parser.add_argument('--epochs', type=int, default=50)
     parser.add_argument('--n-points', type=int, default=192)
     parser.add_argument('--n-rays', type=int, default=2048)

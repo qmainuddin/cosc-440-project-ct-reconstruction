@@ -1,3 +1,167 @@
+# Multiscale trilinear interpolation branch
+
+Branch: `multiscale-trilinear-interpolation`.
+
+The **submit/** folder is a frozen, ready-to-review submission based on the five
+completed baseline/attention experiments. Its own source matches those experiments.
+Root-level code adds the new `trilinear` model, which has not yet been trained for
+100 epochs on a lab GPU. Do not replace the report's measured results with predictions
+about this method. Its full results can be incorporated after training.
+
+## What changes
+
+`--model trilinear` retains the baseline's eight grid tables, scalar features and
+64-unit dense head, but replaces single-cell lookup with the weighted sum of eight
+surrounding grid vertices at every scale. For resolution r, vertices span the unit
+cube, so the grid coordinate is `scaled * (r - 1)`. Coordinates clamp to [0,1].
+The eight weights are products of distances along x, y and z and sum to one.
+The model is continuous across internal grid faces. It has the same trainable
+parameter count as baseline (19,174,601 at depth 8, embedding width 1).
+
+This is a change inside the trainable spatial representation, not smoothing a
+finished TIFF. Its hypothesis is that continuous multiscale features reduce grid
+artefacts and improve SSIM at a matched budget. Smoothing can also lose detail;
+there is no guarantee of improvement. Eight lookups per scale cost more computation
+and temporary memory than one. Baseline and attention behaviour are unchanged.
+
+## UC machines: setup once before starting either job
+
+From a lab terminal with access to the repository (not necessarily from your Mac):
+
+```bash
+cd "$HOME/Desktop/cosc-440-project/cosc-440-project-ct-reconstruction"
+git status --short
+git fetch origin
+git switch multiscale-trilinear-interpolation
+git pull --ff-only origin multiscale-trilinear-interpolation
+```
+
+If Git reports local modifications, preserve them; do not use reset/clean to discard
+work. Both machines share your home directory, so perform the branch switch once
+and avoid pulling/editing code while either job runs. The two jobs use distinct
+host-specific output folders. Never run two jobs against the same output folder.
+Keep the supplied dataset at `data/ct_data/chest_50.pickle` (it is not in Git).
+
+On each machine, confirm its hostname and environment:
+
+```bash
+hostname
+source "$HOME/.venvs/cosc440-$(hostname -s)/bin/activate"
+python -m pip check
+nvidia-smi
+bash run_trilinear_lab.sh smoke
+```
+
+No new dependencies are introduced. If a dependency is missing, install it in the
+virtual environment with `python -m pip install -r requirements-linux.txt`.
+The smoke action runs the eight assertion tests and a full-depth, full-ray-batch
+trilinear epoch using two projections. This checks real GPU memory capacity before
+the longer run. Its timestamped output is diagnostic, not a completed experiment.
+If the smoke test fails, stop and retain the full error; do not silently lower the
+ray budget for just one model. If fewer rays are necessary, restart a matched pair
+with identical changed settings using the manual CLI below.
+
+## Start the matched experiment (same command on either machine)
+
+```bash
+mkdir -p logs
+nohup bash run_trilinear_lab.sh train > "logs/trilinear-$(hostname -s)-launch.log" 2>&1 &
+echo "Training process ID: $!"
+tail -f "logs/trilinear-$(hostname -s)-launch.log"
+```
+
+Ctrl+C stops `tail`, not the background job. The launcher uses the correct existing
+host-specific virtual environment automatically. It needs no tmux or new system
+software. Keep the computer powered on; nohup protects against SSH disconnection,
+not machine shutdown. Do not start another job if this one is still running.
+
+| Host | Seed | Baseline | New model |
+|---|---:|---|---|
+| cs23002lv (3090) | 42 | Train fresh at LR .001, 100 epochs in `runs/3090-baseline-s42-lr0001` | `runs/3090-trilinear-s42-lr0001`, 100 epochs |
+| cs25049kx (4070) | 43 | Reuse matching `runs/4070-baseline-s43`, already 100 epochs at LR .001 | `runs/4070-trilinear-s43-lr0001`, 100 epochs |
+
+The launcher checks the reused baseline's model, seed, dataset hash, learning rate,
+depth, embedding width and ray/point budgets. It refuses an incomplete existing run
+unless `resume` is requested. It never uses the LR .1 baseline as the matched control
+for LR .001 trilinear. Comparison figures and JSON are generated automatically.
+
+## Monitor, resume and inspect results
+
+```bash
+nvidia-smi
+# Choose the matching host's file:
+tail -n 3 runs/3090-trilinear-s42-lr0001/metrics.csv
+tail -n 3 runs/4070-trilinear-s43-lr0001/metrics.csv
+```
+
+After confirming the earlier process has stopped, resume interrupted training:
+
+```bash
+nohup bash run_trilinear_lab.sh resume > "logs/trilinear-$(hostname -s)-resume.log" 2>&1 &
+```
+
+Resume requires the local checkpoints; they are intentionally excluded from Git.
+The launcher skips already completed matching runs, resumes incomplete runs, and
+starts missing runs. It appends training output to logs instead of overwriting it.
+If a stale `.running` lock remains after a killed process, verify no training job
+is alive before removing that lock; do not remove it from an active run.
+
+Regenerate figures after completion:
+
+```bash
+bash run_trilinear_lab.sh compare
+```
+
+Outputs: `runs/3090-trilinear-comparison-s42/` or
+`runs/4070-trilinear-comparison-s43/`, containing learning curves, three-slice
+comparisons (PNG/PDF) and numerical differences (JSON). Every run records epoch
+MSE/SSIM/PSNR, configuration, runtime, source hashes, raw/display TIFFs and checkpoints.
+Judge improved SSIM and anatomical detail as well as projection MSE. A single seed
+or lower training loss alone is not proof of a generally better method.
+
+## Manual equivalent (activated environment, new output folder)
+
+```bash
+python gpu_python.py project_main.py --model trilinear   --dataset data/ct_data/chest_50.pickle --output runs/NEW-trilinear   --epochs 100 --learning-rate 0.001 --seed 43 --depth 8 --embedding-dim 1   --n-rays 2048 --n-points 192 --query-batch 8192 --save-every 10 --device gpu
+python compare_runs.py runs/4070-baseline-s43 runs/NEW-trilinear   --epoch 100 --output runs/NEW-comparison
+```
+
+To use another location or interpreter, set `COSC440_DATASET` to the absolute
+dataset path and/or `COSC440_PYTHON` to the desired Python executable before running
+the helper. The helper only auto-configures the two known lab hostnames.
+
+## Return results for report updates
+
+Keep the new run directories (CSV, configuration/runtime and TIFF outputs), their
+logs, comparison figures, and a screenshot showing the completed job. Do not add
+datasets or checkpoints. Example on the 4070, after its job finishes:
+
+```bash
+git add runs/4070-trilinear-s43-lr0001 runs/4070-trilinear-comparison-s43
+git add logs/4070-trilinear-s43-lr0001.log
+git commit -m "Record 4070 trilinear experiment"
+git push origin multiscale-trilinear-interpolation
+```
+
+On the 3090 also add `runs/3090-baseline-s42-lr0001` and its log. Because home is
+shared, coordinate commits/pushes sequentially after the jobs finish; do not switch
+branches while either job runs. The report in submit/ is not automatically altered.
+
+## Validation
+
+Eight tests cover the original operations, both existing models and trilinear,
+affine-field interpolation, exact corner values, eight-corner gradient weights,
+clamping, continuity, equal parameter count and checkpoint round trips. Local
+CPU smoke training also checks the full output/evaluation/resume/plot pipeline.
+These checks are not evidence of full GPU reconstruction quality.
+
+---
+
+# Earlier baseline and attention workflow
+
+The following sections describe the original project and historical experiments.
+Use the branch-specific instructions above for the new trilinear study.
+
 # COSC440 CT reconstruction project
 
 This implementation completes the supplied baseline and adds **scale attention** as Model 2.
@@ -153,12 +317,13 @@ Activate the appropriate environment again inside tmux, enter the project direct
 
 ```bash
 set -o pipefail
-python gpu_python.py project_main.py --model baseline --output runs/3090-baseline-s42 --seed 42 --device gpu 2>&1 | tee baseline-s42.log
-python gpu_python.py project_main.py --model attention --output runs/3090-attention-s42 --seed 42 --device gpu 2>&1 | tee attention-s42.log
+python gpu_python.py project_main.py --model baseline --output runs/3090-baseline-s42 --seed 42 --learning-rate 0.1 --device gpu 2>&1 | tee baseline-s42.log
+python gpu_python.py project_main.py --model attention --output runs/3090-attention-s42 --seed 42 --learning-rate 0.1 --device gpu 2>&1 | tee attention-s42.log
 ```
 
-Run these sequentially on the 3090. Defaults preserve the starter's depth 8, embedding width 1,
-192 sample points, 2048 rays per projection, learning rate 0.1 and 50 epochs. Attention costs
+These are historical reproduction commands; use new output folders if the originals already exist.
+They explicitly use learning rate 0.1. The current CLI default is 0.001. Depth 8, embedding width 1,
+192 sample points, 2048 rays per projection and 50 epochs remain defaults. Attention costs
 more memory than the baseline. First try a one-epoch run of EACH full-sized model in separate
 trial folders to establish memory use. If a model runs out of memory, choose a smaller common
 `--n-rays` (e.g. 512) and restart BOTH comparison runs in NEW folders with that setting.
@@ -183,7 +348,7 @@ If interrupted mid-epoch, that unfinished epoch is repeated from the last comple
 Use the SAME original settings (including any non-default flags):
 
 ```bash
-python gpu_python.py project_main.py --model baseline --output runs/3090-baseline-s42 --seed 42 --device gpu --resume
+python gpu_python.py project_main.py --model baseline --output runs/3090-baseline-s42 --seed 42 --learning-rate 0.1 --device gpu --resume
 ```
 
 Use `--epochs 100 --resume` to extend a run to 100 total epochs, not 100 extra epochs. The
@@ -194,7 +359,7 @@ remove a stale lock ONLY after confirming no process is still using that folder.
 Reconstruct and evaluate a saved checkpoint without further training:
 
 ```bash
-python gpu_python.py project_main.py --model baseline --output runs/3090-baseline-s42 --seed 42 --device gpu --evaluate-only
+python gpu_python.py project_main.py --model baseline --output runs/3090-baseline-s42 --seed 42 --learning-rate 0.1 --device gpu --evaluate-only
 ```
 
 Each run contains:
