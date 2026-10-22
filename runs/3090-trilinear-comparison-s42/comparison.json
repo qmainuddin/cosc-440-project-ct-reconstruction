@@ -1,0 +1,29 @@
+{
+  "epoch": 100,
+  "baseline": {
+    "epoch": 100.0,
+    "train_mse": 1.5716113757662243e-05,
+    "train_nmse": 0.00012620094159501605,
+    "ssim": 0.6631702612503432,
+    "psnr_db": 25.04757809638977,
+    "display_mse": 0.003560351247468484,
+    "training_seconds": 1.7590949739969801,
+    "evaluation_seconds": 15.063436021999223
+  },
+  "trilinear": {
+    "epoch": 100.0,
+    "train_mse": 1.6227247979259118e-05,
+    "train_nmse": 0.0001310888212174177,
+    "ssim": 0.793810504837893,
+    "psnr_db": 26.59654465317726,
+    "display_mse": 0.0025307523044702045,
+    "training_seconds": 5.5983542340109125,
+    "evaluation_seconds": 30.55381679700804
+  },
+  "trilinear_minus_baseline": {
+    "train_mse": 5.111342215968758e-07,
+    "ssim": 0.13064024358754978,
+    "display_mse": -0.0010295989429982793
+  },
+  "caution": "Training-fit metrics, not held-out generalization. Images use per-volume scaling."
+}

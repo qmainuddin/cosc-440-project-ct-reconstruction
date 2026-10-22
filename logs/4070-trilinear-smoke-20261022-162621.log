@@ -1,0 +1,9 @@
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1792639583.102087  798148 port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+I0000 00:00:1792639583.138793  798148 cpu_feature_guard.cc:227] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 AVX_VNNI FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1792639589.670688  798148 port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+I0000 00:00:1792639592.912013  798148 gpu_device.cc:2043] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 9750 MB memory:  -> device: 0, name: NVIDIA GeForce RTX 4070, pci bus id: 0000:01:00.0, compute capability: 8.9
+I0000 00:00:1792639605.416412  798148 cuda_dnn.cc:461] Loaded cuDNN version 92700
+{"epoch": 1, "train_mse": 0.11852945759892464, "train_nmse": 0.9800024330615997, "ssim": 0.18769626748496648, "psnr_db": 2.978565365076065, "display_mse": 0.508224211109459, "training_seconds": 1.849709261994576, "evaluation_seconds": 8.804862582997885}

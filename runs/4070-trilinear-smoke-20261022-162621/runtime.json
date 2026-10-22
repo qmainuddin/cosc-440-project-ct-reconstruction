@@ -1,0 +1,16 @@
+{
+  "hostname": "cs25049kx",
+  "platform": "Linux-6.17.0-42-generic-x86_64-with-glibc2.39",
+  "python": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+  "tensorflow": "2.21.0",
+  "numpy": "2.5.4",
+  "git_commit": "73e98c50d233f64c3d763339df4ef49b89becffe",
+  "code_sha256": {
+    "project_main.py": "9f28833cb6e3414f2ccb2ca1d0833613fd47fa33c0d956be502d9c62e18716ad",
+    "geometry.py": "480f950b4552fb582b1ff442400086ab8b5ef99caa50ded548d6ede4d2ad3b63"
+  },
+  "device": "/GPU:0",
+  "parameters": 19174601,
+  "resumed_from": 0,
+  "target_epochs": 1
+}
