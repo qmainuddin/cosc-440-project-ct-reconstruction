@@ -338,7 +338,7 @@ def parse_args():
     parser.add_argument('--dataset', default=str(Path(__file__).parent / 'data/ct_data/chest_50.pickle'))
     parser.add_argument('--output', required=True)
     parser.add_argument('--model', choices=['baseline', 'attention'], default='baseline')
-    parser.add_argument('--epochs', type=int, default=50)
+    parser.add_argument('--epochs', type=int, default=250)
     parser.add_argument('--n-points', type=int, default=192)
     parser.add_argument('--n-rays', type=int, default=2048)
     parser.add_argument('--depth', type=int, default=8)

@@ -43,18 +43,18 @@ if epochs!=list(range(1,len(rows)+1)):raise SystemExit('Incomplete or duplicate 
 print(len(rows))
 PY
 )"
-  if (( completed >= 50 )); then
-   [[ -f "$folder/epoch_0050.tiff" ]] || { echo 'Missing epoch-50 image' >&2; exit 2; }
+  if (( completed >= 250 )); then
+   [[ -f "$folder/epoch_0250.tiff" ]] || { echo 'Missing epoch-250 image' >&2; exit 2; }
    echo "Reusing completed matching $model run: $folder"
    return
   fi
   [[ "$ACTION" == resume ]] || { echo "Incomplete run $folder; use resume after confirming no job is active." >&2; exit 2; }
   resume_args=(--resume)
  fi
- "$PYTHON_BIN" gpu_python.py project_main.py "${COMMON[@]}" --model "$model" --output "$folder" --epochs 50 --max-projections 0 "${resume_args[@]}" 2>&1 | tee -a "logs/$(basename "$folder").log"
+ "$PYTHON_BIN" gpu_python.py project_main.py "${COMMON[@]}" --model "$model" --output "$folder" --epochs 250 --max-projections 0 "${resume_args[@]}" 2>&1 | tee -a "logs/$(basename "$folder").log"
 }
 if [[ "$ACTION" != compare ]]; then
  run_model baseline "$BASELINE"
  run_model attention "$ATTENTION"
 fi
-"$PYTHON_BIN" compare_runs.py "$BASELINE" "$ATTENTION" --epoch 50 --output "runs/$TAG-attention-comparison-s$SEED"
+"$PYTHON_BIN" compare_runs.py "$BASELINE" "$ATTENTION" --epoch 250 --output "runs/$TAG-attention-comparison-s$SEED"

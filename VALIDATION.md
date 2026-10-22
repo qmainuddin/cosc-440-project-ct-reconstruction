@@ -1,6 +1,6 @@
 # Fresh experiment validation - 22 October 2026
 
-- CLI defaults verified: seed 50, learning rate 0.0001, epochs 50.
+- CLI defaults verified: seed 50, learning rate 0.0001, epochs 250.
 - python -m unittest test_project: all five tests passed on the Mac CPU.
 - Supplied project_unit_test.py executed successfully; its numerical fixtures are unchanged.
 - bash -n run_lab.sh passed. The launcher uses seed 50 and rate 0.0001 for both hosts.

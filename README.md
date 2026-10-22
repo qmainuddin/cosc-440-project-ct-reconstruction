@@ -4,7 +4,7 @@ Active branch: main. Fresh experiment settings:
 
 - Seed: **50** for every model on both machines.
 - Learning rate: **0.0001** (1e-4) for every model.
-- Epochs: **50** (unchanged default).
+- Epochs: **250** for both baseline and attention.
 - Depth 8, embedding width 1, 192 points per ray, 2,048 rays per projection.
 - Adam optimiser; all training projections; reconstruction evaluated every epoch.
 
@@ -73,7 +73,7 @@ echo "Training process ID: $!"
 tail -f "logs/fresh-$(hostname -s)-launch.log"
 ```
 
-The helper trains baseline first, then attention, each for 50 epochs, and generates
+The helper trains baseline first, then attention, each for 250 epochs, and generates
 comparison figures. Ctrl+C stops tail, not training. nohup survives SSH disconnect;
 it does not survive shutdown. Do not start a second job against the same folders.
 
@@ -104,12 +104,12 @@ Use unique output folders. Example for the 3090:
 ```bash
 python gpu_python.py project_main.py --model baseline \
   --output runs/3090-baseline-s50-lr1e-4 \
-  --seed 50 --learning-rate 0.0001 --epochs 50 --device gpu
+  --seed 50 --learning-rate 0.0001 --epochs 250 --device gpu
 python gpu_python.py project_main.py --model attention \
   --output runs/3090-attention-s50-lr1e-4 \
-  --seed 50 --learning-rate 0.0001 --epochs 50 --device gpu
+  --seed 50 --learning-rate 0.0001 --epochs 250 --device gpu
 python compare_runs.py runs/3090-baseline-s50-lr1e-4 \
-  runs/3090-attention-s50-lr1e-4 --epoch 50 --output runs/3090-attention-comparison-s50
+  runs/3090-attention-s50-lr1e-4 --epoch 250 --output runs/3090-attention-comparison-s50
 ```
 
 For the 4070 change the folder prefix to 4070, keeping seed 50 and learning rate
@@ -123,7 +123,7 @@ Each full run records config.json, runtime.json, metrics.csv, raw/display TIFFs,
 reference TIFF and local checkpoints. Preserve terminal logs and screenshots.
 The comparison writes PNG/PDF learning curves and three-slice images, plus JSON
 metric differences. A lower learning rate may learn more slowly; it does not
-promise higher SSIM after the unchanged 50-epoch budget.
+promise higher SSIM after the 250-epoch budget.
 
 Commit the new run folders and logs only after completion; exclude course datasets,
 virtual environments and checkpoints. Rebuild the report and submission from the
