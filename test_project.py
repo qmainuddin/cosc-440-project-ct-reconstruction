@@ -39,11 +39,11 @@ class ProjectTests(unittest.TestCase):
     def test_models_update_and_checkpoint_roundtrip(self):
         for cls in (MultiScaleVoxelModel, ScaleAttentionModel):
             with self.subTest(model=cls.__name__):
-                tf.keras.utils.set_random_seed(8)
+                tf.keras.utils.set_random_seed(50)
                 model = cls(2., 2, 1)
                 query = tf.constant([[.1, -.2, .3], [-.3, .2, -.1]])
                 model(query)
-                optimizer = tf.keras.optimizers.Adam(.001)
+                optimizer = tf.keras.optimizers.Adam(.0001)
                 optimizer.build(model.trainable_variables)
                 before = [v.numpy().copy() for v in model.trainable_variables]
                 step = make_train_step(model, optimizer, 4)
@@ -62,7 +62,7 @@ class ProjectTests(unittest.TestCase):
                     path = checkpoint.save(str(Path(tmp) / 'ckpt'))
                     restored = cls(2., 2, 1)
                     restored(query)
-                    opt2 = tf.keras.optimizers.Adam(.001)
+                    opt2 = tf.keras.optimizers.Adam(.0001)
                     opt2.build(restored.trainable_variables)
                     tf.train.Checkpoint(model=restored, optimizer=opt2).restore(path).assert_consumed()
                     np.testing.assert_allclose(restored(query), expected, atol=1e-7)

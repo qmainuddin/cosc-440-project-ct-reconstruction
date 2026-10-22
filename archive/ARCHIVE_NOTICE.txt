@@ -1,0 +1,9 @@
+Historical material from before the seed-50 / learning-rate-0.0001 reset.
+
+These reports, source copies, instructions, settings, logs and screenshots retain
+the actual settings used at the time. They are not current experiment instructions
+or fresh-run results. Follow the root README.md and run_lab.sh for the new study.
+
+The archived submission ZIP corresponds to archive/submit/. Its original file
+checksums are preserved. The remote main-backup branch retains the complete old
+run folders, including TIFFs. The main branch no longer contains a runs folder.
