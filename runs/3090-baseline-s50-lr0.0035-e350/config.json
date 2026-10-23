@@ -1,0 +1,19 @@
+{
+  "dataset": "/csse/users/mta298/Desktop/cosc-440-project/cosc-440-project-ct-reconstruction/data/ct_data/chest_50.pickle",
+  "output": "/csse/users/mta298/Desktop/cosc-440-project/cosc-440-project-ct-reconstruction/runs/3090-baseline-s50-lr0.0035-e350",
+  "model": "baseline",
+  "epochs": 350,
+  "n_points": 192,
+  "n_rays": 2048,
+  "depth": 8,
+  "embedding_dim": 1,
+  "learning_rate": 0.0035,
+  "seed": 50,
+  "query_batch": 8192,
+  "save_every": 10,
+  "max_projections": 0,
+  "device": "gpu",
+  "resume": false,
+  "evaluate_only": false,
+  "dataset_sha256": "6a85e8fe42405723b96f4593912d2fa549bdf93c66dbc6d22b9a0e19dc17d8c7"
+}
